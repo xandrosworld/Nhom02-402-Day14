@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 Lab Day 14: AI Evaluation Factory (Team Edition)
 
 ## 🎯 Tổng quan
@@ -79,3 +80,6 @@ python check_lab.py
 
 ---
 *Chúc nhóm bạn xây dựng được một Evaluation Factory thực sự mạnh mẽ!*
+=======
+# Nhom02-402-Day14
+>>>>>>> origin/main
