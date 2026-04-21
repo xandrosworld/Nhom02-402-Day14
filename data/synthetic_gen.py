@@ -68,16 +68,233 @@ STANDARD_TEMPLATES = [
     ("std_10", "State the practical guideline for {topic}.",               "medium"),
 ]
 
+# Tailored expected answers per (doc_id, template_slot).
+# Each answer targets exactly the question's intent instead of repeating the
+# full KB paragraph — fixing the copy-paste answer problem.
+FOCUSED_ANSWERS: Dict[str, Dict[str, str]] = {
+    "kb_retrieval_metrics": {
+        "std_01": (
+            "Teams should measure retrieval quality with Hit Rate and Mean Reciprocal "
+            "Rank. These metrics show whether the right document was found and how "
+            "early it appeared."
+        ),
+        "std_02": "Validate retrieval quality before judging generation quality.",
+        "std_03": (
+            "Measure Hit Rate and Mean Reciprocal Rank for every retrieval stage "
+            "in the pipeline."
+        ),
+        "std_04": "Hit Rate and Mean Reciprocal Rank (MRR).",
+        "std_05": (
+            "Whether the ground-truth document appears in the top-k results "
+            "and how early it is ranked."
+        ),
+        "std_06": (
+            "Teams must validate retrieval quality before evaluating "
+            "generation output."
+        ),
+        "std_07": (
+            "Check whether at least one ground-truth document appears in the "
+            "retrieved top-k list using Hit Rate."
+        ),
+        "std_08": (
+            "The report must include Hit Rate and MRR scores computed over "
+            "all test cases."
+        ),
+        "std_09": (
+            "Skipping retrieval evaluation means hallucination caused by missing "
+            "documents cannot be distinguished from model reasoning errors."
+        ),
+        "std_10": (
+            "Always compute Hit Rate and MRR before interpreting judge scores."
+        ),
+    },
+    "kb_golden_dataset": {
+        "std_01": (
+            "The golden dataset should contain at least 50 high-quality test cases "
+            "with ground-truth retrieval IDs. At least a few hard or adversarial "
+            "questions should be included."
+        ),
+        "std_02": (
+            "Create at least 50 benchmark cases with accurate ground-truth document "
+            "IDs and include adversarial prompts."
+        ),
+        "std_03": (
+            "Build a golden dataset with at least 50 cases, each including "
+            "expected_retrieval_ids and a mix of difficulty levels."
+        ),
+        "std_04": (
+            "Track case count per difficulty level and case type, and verify "
+            "that all expected_retrieval_ids are accurate."
+        ),
+        "std_05": (
+            "Measure whether each test case has an accurate expected answer "
+            "and correct ground-truth retrieval IDs."
+        ),
+        "std_06": (
+            "Every case must include accurate expected_retrieval_ids so that "
+            "retrieval quality can be scored correctly."
+        ),
+        "std_07": (
+            "Check that expected_retrieval_ids are correctly mapped to the supporting "
+            "documents; incorrect IDs make retrieval metrics meaningless."
+        ),
+        "std_08": (
+            "The report should reference the total case count, breakdown by "
+            "difficulty and case type, and the dataset file path."
+        ),
+        "std_09": (
+            "Without a golden dataset the benchmark has no ground truth, making "
+            "all evaluation scores meaningless."
+        ),
+        "std_10": (
+            "Generate at least 50 diverse cases with accurate ground-truth IDs "
+            "before running any benchmark."
+        ),
+    },
+    "kb_multi_judge": {
+        "std_01": (
+            "The evaluation system should use at least two judge models and track "
+            "agreement rate. When scores disagree sharply, the pipeline should flag "
+            "the conflict or apply a tie-break rule."
+        ),
+        "std_02": (
+            "Use at least two independent judge models and compute an agreement rate "
+            "to ensure reliable scoring."
+        ),
+        "std_03": (
+            "Deploy at least two judge models, compare their scores, and apply "
+            "calibration logic when disagreement is high."
+        ),
+        "std_04": (
+            "Agreement rate, score delta between judges, and individual scores "
+            "from each judge model."
+        ),
+        "std_05": (
+            "The agreement rate between judges and flag cases where the score "
+            "difference exceeds the acceptable threshold."
+        ),
+        "std_06": (
+            "The pipeline must use at least two judge models and must not silently "
+            "average conflicting scores."
+        ),
+        "std_07": (
+            "Check the agreement rate first; if it is below threshold, review the "
+            "calibration logic and verify both judges received the same context."
+        ),
+        "std_08": (
+            "The report must include agreement_rate, score_delta, and individual "
+            "scores from each judge for every evaluated case."
+        ),
+        "std_09": (
+            "Using a single judge risks undetected bias; without multi-judge consensus "
+            "scores may be unreliable and disagreements go unnoticed."
+        ),
+        "std_10": (
+            "Always compare at least two judge models and handle large score "
+            "disagreements with an explicit calibration rule."
+        ),
+    },
+    "kb_regression_gate": {
+        "std_01": (
+            "Teams should compare the candidate agent against a baseline and compute "
+            "deltas for quality, cost, and latency. The release gate should output a "
+            "clear release or rollback decision."
+        ),
+        "std_02": (
+            "Compare Agent V2 against Agent V1 on quality, cost, and latency, then "
+            "output an automated release or rollback decision."
+        ),
+        "std_03": (
+            "Run a regression comparison between the candidate and baseline versions, "
+            "then trigger release or rollback based on predefined thresholds."
+        ),
+        "std_04": (
+            "Score delta, hit rate delta, latency delta, pass rate delta, and cost "
+            "delta between the candidate and baseline versions."
+        ),
+        "std_05": (
+            "The delta in quality score, retrieval hit rate, and latency between the "
+            "new and old agent versions."
+        ),
+        "std_06": (
+            "The gate must automatically output a release or rollback decision based "
+            "on measurable quality, cost, and latency thresholds."
+        ),
+        "std_07": (
+            "Check the score delta and hit rate delta first; if either is negative "
+            "the gate should immediately trigger rollback."
+        ),
+        "std_08": (
+            "The report must include the regression decision, all delta values, and "
+            "the thresholds used to make the decision."
+        ),
+        "std_09": (
+            "Without a release gate a regressed agent version can be deployed "
+            "unknowingly, degrading user experience."
+        ),
+        "std_10": (
+            "Automate the release decision using threshold-based comparisons of "
+            "quality, hit rate, and latency deltas."
+        ),
+    },
+    "kb_failure_analysis": {
+        "std_01": (
+            "Benchmarking should end with failure clustering and a Five Whys analysis "
+            "on the worst cases. The report should identify whether the root cause "
+            "comes from ingestion, chunking, retrieval, or prompting."
+        ),
+        "std_02": (
+            "Cluster failed cases by error type and run Five Whys on the worst ones "
+            "to find the root system bottleneck."
+        ),
+        "std_03": (
+            "Identify the worst-performing cases, group them by failure type, and "
+            "apply Five Whys to isolate the root cause."
+        ),
+        "std_04": (
+            "Failure cluster labels, Five Whys depth per cluster, and the identified "
+            "root cause stage for each group."
+        ),
+        "std_05": (
+            "How many cases fall into each failure cluster and how deep the root "
+            "cause chain goes for the most frequent error type."
+        ),
+        "std_06": (
+            "The benchmark must not stop at scores; it must include failure clustering "
+            "and root cause identification for the worst cases."
+        ),
+        "std_07": (
+            "Check which failure cluster has the highest case count, then run Five "
+            "Whys starting from retrieval before examining generation."
+        ),
+        "std_08": (
+            "The report must include a failure cluster summary, Five Whys chains for "
+            "the top failure groups, and a recommended fix per root cause."
+        ),
+        "std_09": (
+            "Skipping failure analysis means the team cannot distinguish a retrieval "
+            "bug from a prompting bug, leading to incorrect fixes."
+        ),
+        "std_10": (
+            "Always cluster failures before writing the report and identify at least "
+            "one root cause per cluster using the Five Whys method."
+        ),
+    },
+}
+
 
 def build_standard_cases() -> List[Dict]:
     cases: List[Dict] = []
     for doc in SAMPLE_DOCUMENTS:
+        doc_answers = FOCUSED_ANSWERS.get(doc["id"], {})
         for tpl_id, template, difficulty in STANDARD_TEMPLATES:
+            # Use the focused answer if available; fall back to the KB answer.
+            expected_answer = doc_answers.get(tpl_id, doc["answer"])
             cases.append(
                 _make_case(
                     case_id=f"{doc['id']}_{tpl_id}",
                     question=template.format(topic=doc["topic"]),
-                    expected_answer=doc["answer"],
+                    expected_answer=expected_answer,
                     expected_retrieval_ids=[doc["id"]],
                     difficulty=difficulty,
                     case_type="standard",
