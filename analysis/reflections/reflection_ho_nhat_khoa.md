@@ -43,7 +43,11 @@ MRR bổ sung cho Hit Rate: hai hệ thống cùng Hit Rate = 1.0 nhưng một h
 
 Bài giảng định nghĩa: `CP = (1/K) × Σ_{k=1}^{K} [Precision@k × rel_k]`
 
-Đây là **Average Precision (AP)** trong Information Retrieval — tài liệu đúng ở vị trí cao được điểm nhiều hơn. Với 1 expected doc:
+Implementation dùng **Average Precision (AP)** — tổng quát hơn khi có nhiều expected docs:
+
+`AP = Σ_{k=1}^{K} [Precision@k × rel_k] / min(|expected|, K)`
+
+Với 1 expected doc, mẫu số = `min(1, K) = 1`, nên AP = sum trực tiếp (không chia K). Với 1 expected doc:
 
 | Vị trí tài liệu đúng | Simple Precision | Context Precision |
 |---|---|---|
