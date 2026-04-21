@@ -1,104 +1,31 @@
 {
   "metadata": {
-    "generated_at": "2026-04-21T10:28:13.544491+00:00",
     "total": 56,
-    "baseline_version": "Agent_V1_Base",
-    "candidate_version": "Agent_V2_Candidate",
-    "report_schema_version": "1.1"
-  },
-  "config": {
-    "baseline_version": "Agent_V1_Base",
-    "candidate_version": "Agent_V2_Candidate",
-    "provider": "openai",
-    "judge_provider": "openai",
-    "chat_model": "gpt-4.1-mini",
-    "judge_models": [
-      "openai:gpt-4.1-mini",
-      "gemini:gemini-2.5-flash"
-    ],
-    "concurrency": 5,
-    "min_cases": 50,
-    "min_agreement_rate": 0.6,
-    "report_schema_version": "1.1",
-    "dataset_path": "data\\golden_set.jsonl"
-  },
-  "metrics": {
-    "avg_score": 4.8393,
-    "hit_rate": 0.9107,
-    "mrr": 0.9107,
-    "context_precision": 0.9107,
-    "context_recall": 0.8554,
-    "faithfulness": 0.8779,
-    "answer_relevancy": 0.5621,
-    "agreement_rate": 0.9688,
-    "avg_latency_ms": 15861.86,
-    "pass_rate": 1.0,
-    "pass_count": 56,
-    "fail_count": 0,
-    "error_count": 0,
-    "total_tokens": 8092,
-    "total_cost_usd": 0.016184
-  },
-  "baseline": {
-    "avg_score": 4.7857,
-    "hit_rate": 0.9107,
-    "mrr": 0.9018,
-    "context_precision": 0.8958,
-    "context_recall": 0.9184,
-    "faithfulness": 0.9084,
-    "answer_relevancy": 0.6897,
-    "agreement_rate": 0.9509,
-    "avg_latency_ms": 22201.95,
-    "pass_rate": 0.9464,
-    "pass_count": 53,
-    "fail_count": 3,
-    "error_count": 0,
-    "total_tokens": 126902,
-    "total_cost_usd": 0.253804
-  },
-  "candidate": {
-    "avg_score": 4.8393,
-    "hit_rate": 0.9107,
-    "mrr": 0.9107,
-    "context_precision": 0.9107,
-    "context_recall": 0.8554,
-    "faithfulness": 0.8779,
-    "answer_relevancy": 0.5621,
-    "agreement_rate": 0.9688,
-    "avg_latency_ms": 15861.86,
-    "pass_rate": 1.0,
-    "pass_count": 56,
-    "fail_count": 0,
-    "error_count": 0,
-    "total_tokens": 8092,
-    "total_cost_usd": 0.016184
-  },
-  "regression": {
-    "decision": "release",
-    "score_delta": 0.0536,
-    "hit_rate_delta": 0.0,
-    "latency_delta_ms": -6340.09,
-    "pass_rate_delta": 0.0536,
-    "thresholds": {
-      "min_cases": 50,
-      "min_agreement_rate": 0.6
-    },
-    "reasons": [
-      "Candidate passed the starter release gate thresholds."
+    "version": "OPTIMIZED (V2)",
+    "timestamp": "2026-04-21 17:57:59",
+    "versions_compared": [
+      "V1",
+      "V2"
     ]
   },
-  "samples": {
-    "baseline": {
-      "failed_case_ids": [
-        "access_std_04",
-        "ooc_04",
-        "edge_04"
-      ],
-      "error_case_ids": []
+  "metrics": {
+    "avg_score": 4.8259,
+    "hit_rate": 0.9107,
+    "mrr": 0.9107,
+    "agreement_rate": 0.9554,
+    "pass_rate": 0.9821
+  },
+  "regression": {
+    "v1": {
+      "score": 4.9018,
+      "hit_rate": 0.9107,
+      "judge_agreement": 0.9732
     },
-    "candidate": {
-      "failed_case_ids": [],
-      "error_case_ids": []
-    }
+    "v2": {
+      "score": 4.8259,
+      "hit_rate": 0.9107,
+      "judge_agreement": 0.9554
+    },
+    "decision": "ROLLBACK"
   }
 }

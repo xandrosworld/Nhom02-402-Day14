@@ -1,8 +1,8 @@
 import asyncio
 import json
 import os
-from datetime import datetime, timezone
-from dataclasses import asdict, dataclass
+from datetime import datetime
+from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
 from typing import Dict, List, Tuple
@@ -164,6 +164,50 @@ def build_metrics(results: List[Dict]) -> Dict:
     }
 
 
+def _compact_score(value: float):
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def _format_teacher_case(result: Dict) -> Dict:
+    judge = result["judge"]
+    retrieval = result["retrieval"]
+    individual_results = {}
+
+    for model_name, score in judge.get("individual_scores", {}).items():
+        individual_results[model_name] = {
+            "score": _compact_score(score),
+            "reasoning": "Auto-converted from internal judge output.",
+        }
+
+    return {
+        "test_case": result["question"],
+        "agent_response": result["agent_response"],
+        "latency": round(result["latency_ms"] / 1000, 6),
+        "ragas": {
+            "hit_rate": retrieval["hit_rate"],
+            "mrr": retrieval["mrr"],
+            "faithfulness": retrieval.get("faithfulness", 0.0),
+            "relevancy": retrieval.get("answer_relevancy", 0.0),
+        },
+        "judge": {
+            "final_score": judge["final_score"],
+            "agreement_rate": judge["agreement_rate"],
+            "individual_results": individual_results,
+            "status": "conflict" if judge.get("conflict_flag") else "consensus",
+        },
+        "status": result["status"],
+    }
+
+
+def _summary_version_label(candidate_version: str) -> str:
+    upper_name = candidate_version.upper()
+    if "V2" in upper_name:
+        return "OPTIMIZED (V2)"
+    return candidate_version
+
+
 def make_release_gate(
     baseline_metrics: Dict,
     candidate_metrics: Dict,
@@ -274,31 +318,40 @@ async def main() -> None:
         total_cases=len(dataset),
         runtime_config=runtime_config,
     )
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     summary = {
         "metadata": {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
             "total": len(dataset),
-            "baseline_version": runtime_config.baseline_version,
-            "candidate_version": runtime_config.candidate_version,
-            "report_schema_version": runtime_config.report_schema_version,
+            "version": _summary_version_label(runtime_config.candidate_version),
+            "timestamp": timestamp,
+            "versions_compared": ["V1", "V2"],
         },
-        "config": asdict(runtime_config),
-        "metrics": candidate_metrics,
-        "baseline": baseline_metrics,
-        "candidate": candidate_metrics,
-        "regression": release_gate,
-        "samples": {
-            "baseline": build_result_samples(baseline_results),
-            "candidate": build_result_samples(candidate_results),
+        "metrics": {
+            "avg_score": candidate_metrics["avg_score"],
+            "hit_rate": candidate_metrics["hit_rate"],
+            "mrr": candidate_metrics["mrr"],
+            "agreement_rate": candidate_metrics["agreement_rate"],
+            "pass_rate": candidate_metrics["pass_rate"],
+        },
+        "regression": {
+            "v1": {
+                "score": baseline_metrics["avg_score"],
+                "hit_rate": baseline_metrics["hit_rate"],
+                "judge_agreement": baseline_metrics["agreement_rate"],
+            },
+            "v2": {
+                "score": candidate_metrics["avg_score"],
+                "hit_rate": candidate_metrics["hit_rate"],
+                "judge_agreement": candidate_metrics["agreement_rate"],
+            },
+            "decision": release_gate["decision"].upper(),
         },
     }
 
     detailed_results = {
-        "metadata": summary["metadata"],
-        "config": summary["config"],
-        "baseline_results": baseline_results,
-        "candidate_results": candidate_results,
+        "v1": [_format_teacher_case(item) for item in baseline_results],
+        "v2": [_format_teacher_case(item) for item in candidate_results],
     }
 
     REPORTS_DIR.mkdir(exist_ok=True)
