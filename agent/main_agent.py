@@ -54,7 +54,6 @@ def _build_passages(text: str) -> List[str]:
         if line.startswith("Q:") and index + 1 < len(raw_lines) and raw_lines[index + 1].startswith("A:"):
             answer_line = raw_lines[index + 1][2:].strip()
             passages.append(answer_line)
-            passages.append(f"{line[2:].strip()} {answer_line}")
             continue
         if line.startswith("A:"):
             passages.append(line[2:].strip())
@@ -363,23 +362,14 @@ class MainAgent:
             return None
 
         scored_passages.sort(key=lambda item: (-item[0], item[1], len(item[2])))
-        best_score = scored_passages[0][0]
-        selected: List[str] = []
         seen = set()
         for score, _, passage in scored_passages:
             ascii_passage = _strip_accents(passage)
             if ascii_passage in seen:
                 continue
-            if score < max(2.0, best_score - 1.5):
-                continue
-            selected.append(ascii_passage)
             seen.add(ascii_passage)
-            if len(selected) == 2:
-                break
-
-        if not selected:
-            return None
-        return " ".join(selected)
+            return ascii_passage
+        return None
 
     def _build_fallback_answer(self, ranked_docs: List[Dict]) -> str:
         if not ranked_docs:

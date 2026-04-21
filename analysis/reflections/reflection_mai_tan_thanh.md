@@ -14,6 +14,7 @@ Tech Lead / Eval Integration Owner
 - Thiết kế phần integration trong `main.py` để gom các bước load dataset, chạy baseline/candidate, tổng hợp metrics, quyết định release gate, và xuất ra `reports/summary.json` cùng `reports/benchmark_results.json`.
 - Tích hợp `engine/runner.py` vào luồng benchmark chung để mỗi test case đều có format output thống nhất gồm câu hỏi, answer, retrieval block, judge block, latency và metadata.
 - Điều chỉnh `agent/main_agent.py` để agent có thể làm việc với knowledge base mới, truy xuất đúng nguồn tài liệu nội bộ, và tạo câu trả lời ổn định hơn cho benchmark cuối.
+- Sửa bug extractive answering trong `agent/main_agent.py` ở giai đoạn chốt bài để V2 không còn trộn passage FAQ không liên quan vào câu trả lời, nhờ đó benchmark cuối quay lại trạng thái `RELEASE`.
 - Giữ vai trò merge cuối và đồng bộ artifact, bảo đảm các phần do từng owner bàn giao có thể ghép lại thành một pipeline chạy được với các lệnh:
   `python data/synthetic_gen.py`
   `python main.py`
