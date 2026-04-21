@@ -48,9 +48,11 @@ class BenchmarkRunner:
             "score_delta": judge.get("score_delta", 0.0),
             "conflict_flag": judge.get("conflict_flag", False),
             "individual_scores": judge.get("individual_scores", {}),
+            "judge_metadata": judge.get("judge_metadata", {}),
         }
 
     async def run_single_test(self, test_case: Dict) -> Dict:
+        print(f"→ START: {test_case['question'][:50]}")
         start_time = time.perf_counter()
         response = {
             "answer": "",
@@ -78,7 +80,7 @@ class BenchmarkRunner:
         retrieval = self._normalize_retrieval(test_case, response, retrieval_raw)
         judge = self._normalize_judge(test_case["question"], judge_raw)
         metadata = self._normalize_metadata(response)
-
+        print(f"✓ DONE: {test_case['question'][:30]} | score={judge_raw.get('final_score')}")
         return {
             "case_id": test_case.get("id"),
             "question": test_case["question"],
@@ -93,12 +95,30 @@ class BenchmarkRunner:
             "error": error_message,
         }
 
-    async def run_all(self, dataset: List[Dict], concurrency: int = 5) -> List[Dict]:
-        semaphore = asyncio.Semaphore(concurrency)
+    async def run_all(self, dataset: List[Dict], concurrency: int = 10) -> List[Dict]:
+        results = []
 
-        async def _guarded(case: Dict) -> Dict:
-            async with semaphore:
-                return await self.run_single_test(case)
+        # chia batch
+        batch_size = concurrency
+        batches = [dataset[i:i + batch_size] for i in range(0, len(dataset), batch_size)]
 
-        tasks = [_guarded(case) for case in dataset]
-        return await asyncio.gather(*tasks)
+        print(f"Total cases: {len(dataset)} | Batch size: {batch_size} | Batches: {len(batches)}")
+
+        for b_idx, batch in enumerate(batches):
+            print(f"\n🚀 Running batch {b_idx+1}/{len(batches)}")
+
+            tasks = []
+            for case in batch:
+                tasks.append(self.run_single_test(case))
+
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # xử lý lỗi
+            for r in batch_results:
+                if isinstance(r, Exception):
+                    print(f"[ERROR] {r}")
+                else:
+                    print(f"✓ {r['case_id']} | score={r['judge']['final_score']}")
+                    results.append(r)
+
+        return results

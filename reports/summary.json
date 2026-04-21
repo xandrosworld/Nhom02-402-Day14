@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-21T09:26:41.026738+00:00",
+    "total": 66,
+    "baseline_version": "Agent_V1_Base",
+    "candidate_version": "Agent_V2_Candidate",
+    "report_schema_version": "1.1"
+  },
+  "config": {
+    "baseline_version": "Agent_V1_Base",
+    "candidate_version": "Agent_V2_Candidate",
+    "provider": "openai",
+    "judge_provider": "openai",
+    "chat_model": "gpt-4.1-mini",
+    "judge_models": [
+      "openai:gpt-4.1-mini",
+      "gemini:gemini-2.5-flash"
+    ],
+    "concurrency": 5,
+    "min_cases": 50,
+    "min_agreement_rate": 0.6,
+    "report_schema_version": "1.1",
+    "dataset_path": "data\\golden_set.jsonl"
+  },
+  "metrics": {
+    "avg_score": 4.0379,
+    "hit_rate": 0.9242,
+    "mrr": 0.9167,
+    "agreement_rate": 0.8561,
+    "avg_latency_ms": 34834.1,
+    "pass_rate": 0.8485,
+    "pass_count": 56,
+    "fail_count": 10,
+    "error_count": 0,
+    "total_tokens": 21496,
+    "total_cost_usd": 0.042992
+  },
+  "baseline": {
+    "avg_score": 3.8409,
+    "hit_rate": 0.9242,
+    "mrr": 0.9167,
+    "agreement_rate": 0.8523,
+    "avg_latency_ms": 30992.91,
+    "pass_rate": 0.8182,
+    "pass_count": 54,
+    "fail_count": 12,
+    "error_count": 0,
+    "total_tokens": 23044,
+    "total_cost_usd": 0.046088
+  },
+  "candidate": {
+    "avg_score": 4.0379,
+    "hit_rate": 0.9242,
+    "mrr": 0.9167,
+    "agreement_rate": 0.8561,
+    "avg_latency_ms": 34834.1,
+    "pass_rate": 0.8485,
+    "pass_count": 56,
+    "fail_count": 10,
+    "error_count": 0,
+    "total_tokens": 21496,
+    "total_cost_usd": 0.042992
+  },
+  "regression": {
+    "decision": "release",
+    "score_delta": 0.197,
+    "hit_rate_delta": 0.0,
+    "latency_delta_ms": 3841.19,
+    "pass_rate_delta": 0.0303,
+    "thresholds": {
+      "min_cases": 50,
+      "min_agreement_rate": 0.6
+    },
+    "reasons": [
+      "Candidate passed the starter release gate thresholds."
+    ]
+  },
+  "samples": {
+    "baseline": {
+      "failed_case_ids": [
+        "kb_retrieval_metrics_std_02",
+        "kb_retrieval_metrics_std_03",
+        "kb_retrieval_metrics_std_10",
+        "kb_golden_dataset_std_08",
+        "kb_golden_dataset_std_09",
+        "kb_regression_gate_std_09",
+        "kb_failure_analysis_std_04",
+        "kb_failure_analysis_std_05",
+        "kb_failure_analysis_std_07",
+        "multihop_retrieval_golden_01"
+      ],
+      "error_case_ids": []
+    },
+    "candidate": {
+      "failed_case_ids": [
+        "kb_retrieval_metrics_std_02",
+        "kb_retrieval_metrics_std_08",
+        "kb_retrieval_metrics_std_10",
+        "kb_golden_dataset_std_04",
+        "kb_golden_dataset_std_08",
+        "kb_failure_analysis_std_04",
+        "kb_failure_analysis_std_05",
+        "kb_failure_analysis_std_07",
+        "kb_failure_analysis_std_10",
+        "multihop_cost_judge_04"
+      ],
+      "error_case_ids": []
+    }
+  }
+}
