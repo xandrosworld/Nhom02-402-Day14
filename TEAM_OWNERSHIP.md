@@ -31,6 +31,17 @@
 - `phuc/multi-judge`
 - `nam/failure-analysis`
 
+## Map theo rubric chấm điểm
+
+| Hạng mục rubric | Người chính | Người hỗ trợ |
+|---|---|---|
+| Retrieval Evaluation | Hồ Nhất Khoa | Hoàng Nam |
+| Dataset & SDG | Đặng Tùng Anh | Hoàng Nam |
+| Multi-Judge consensus | Nguyễn Đức Hoàng Phúc | Hoàng Nam |
+| Regression Testing | Mai Tấn Thành | |
+| Performance (Async) | Mai Tấn Thành | Nguyễn Đức Hoàng Phúc |
+| Failure Analysis | Phạm Lê Hoàng Nam | |
+
 ## Phân công chi tiết theo file
 
 ### Mai Tấn Thành
@@ -87,6 +98,7 @@
   `data/synthetic_gen.py`
 - Output cần kiểm tra nằm ở:
   `data/golden_set.jsonl`
+- Nam hỗ trợ rà hard cases, red teaming, và cách gắn `difficulty` / `case_type`
 
 ### Hồ Nhất Khoa
 
@@ -121,6 +133,7 @@
 - Kết quả phải nhìn thấy trong:
   `reports/benchmark_results.json`
   `reports/summary.json`
+- Nam hỗ trợ phần diễn giải retrieval quality liên hệ với answer quality trong báo cáo cuối
 
 ### Nguyễn Đức Hoàng Phúc
 
@@ -156,6 +169,7 @@
 - Kết quả phải nhìn thấy trong:
   `reports/benchmark_results.json`
   `reports/summary.json`
+- Nam hỗ trợ phần trình bày kết quả judge/agreement trong báo cáo cuối
 
 ### Phạm Lê Hoàng Nam
 
@@ -163,6 +177,10 @@
 - `analysis/failure_analysis.md`
 - `analysis/reflections/README.md` nếu cần chỉnh guideline
 - `analysis/reflections/reflection_template.md` nếu cần chỉnh mẫu
+- hỗ trợ review đầu bài cho:
+  `data/synthetic_gen.py`
+  `engine/retrieval_eval.py`
+  `engine/llm_judge.py`
 
 **Phải tạo / cập nhật**
 - Báo cáo nhóm:
@@ -195,6 +213,10 @@
   `analysis/failure_analysis.md`
 - Reflection cá nhân nằm trong:
   `analysis/reflections/`
+- Trước khi benchmark cuối chạy xong, Nam ưu tiên hỗ trợ:
+  Tùng Anh ở phần hard cases / red teaming
+  Khoa ở phần diễn giải retrieval
+  Phúc ở phần diễn giải multi-judge
 
 ## Checklist trước khi merge vào main
 
