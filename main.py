@@ -1,9 +1,13 @@
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import mean
 from typing import Dict, List, Tuple
+
+from dotenv import load_dotenv
 
 from agent.main_agent import MainAgent
 from engine.llm_judge import LLMJudge
@@ -13,6 +17,76 @@ from engine.retrieval_eval import RetrievalEvaluator
 ROOT = Path(__file__).resolve().parent
 DATASET_PATH = ROOT / "data" / "golden_set.jsonl"
 REPORTS_DIR = ROOT / "reports"
+
+
+@dataclass
+class RuntimeConfig:
+    baseline_version: str
+    candidate_version: str
+    provider: str
+    judge_provider: str
+    chat_model: str
+    judge_models: Tuple[str, str]
+    concurrency: int
+    min_cases: int
+    min_agreement_rate: float
+    report_schema_version: str
+    dataset_path: str
+
+
+def _getenv_int(name: str, default: int) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
+def _getenv_float(name: str, default: float) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        return float(raw_value)
+    except ValueError:
+        return default
+
+
+def _resolve_chat_model(provider: str) -> str:
+    if provider == "gemini":
+        return os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    return os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini")
+
+
+def _resolve_judge_models(judge_provider: str) -> Tuple[str, str]:
+    openai_judge = f"openai:{os.getenv('OPENAI_JUDGE_MODEL', 'gpt-4.1-mini')}"
+    gemini_judge = f"gemini:{os.getenv('GEMINI_JUDGE_MODEL', 'gemini-2.5-flash')}"
+    if judge_provider == "gemini":
+        return gemini_judge, openai_judge
+    return openai_judge, gemini_judge
+
+
+def load_runtime_config() -> RuntimeConfig:
+    load_dotenv(ROOT / ".env", override=False)
+
+    provider = os.getenv("PROVIDER", "openai").strip().lower()
+    judge_provider = os.getenv("JUDGE_PROVIDER", "openai").strip().lower()
+
+    return RuntimeConfig(
+        baseline_version=os.getenv("BASELINE_VERSION", "Agent_V1_Base"),
+        candidate_version=os.getenv("CANDIDATE_VERSION", "Agent_V2_Candidate"),
+        provider=provider,
+        judge_provider=judge_provider,
+        chat_model=_resolve_chat_model(provider),
+        judge_models=_resolve_judge_models(judge_provider),
+        concurrency=_getenv_int("BENCHMARK_CONCURRENCY", 5),
+        min_cases=_getenv_int("MIN_GOLDEN_CASES", 50),
+        min_agreement_rate=_getenv_float("MIN_AGREEMENT_RATE", 0.60),
+        report_schema_version="1.1",
+        dataset_path=str(DATASET_PATH.relative_to(ROOT)),
+    )
 
 
 def load_dataset() -> List[Dict]:
@@ -31,10 +105,34 @@ def load_dataset() -> List[Dict]:
     if not dataset:
         raise ValueError("data/golden_set.jsonl is empty.")
 
+    required_fields = {
+        "id",
+        "question",
+        "expected_answer",
+        "expected_retrieval_ids",
+        "metadata",
+    }
+    for index, case in enumerate(dataset, start=1):
+        missing = required_fields.difference(case.keys())
+        if missing:
+            missing_fields = ", ".join(sorted(missing))
+            raise ValueError(
+                f"Case #{index} in data/golden_set.jsonl is missing: {missing_fields}"
+            )
+        if not isinstance(case["expected_retrieval_ids"], list):
+            raise ValueError(
+                f"Case #{index} has invalid expected_retrieval_ids. Expected a list."
+            )
+
     return dataset
 
 
 def build_metrics(results: List[Dict]) -> Dict:
+    total = len(results)
+    pass_count = sum(1 for item in results if item["status"] == "pass")
+    fail_count = sum(1 for item in results if item["status"] == "fail")
+    error_count = sum(1 for item in results if item["status"] == "error")
+
     return {
         "avg_score": round(mean(item["judge"]["final_score"] for item in results), 4),
         "hit_rate": round(mean(item["retrieval"]["hit_rate"] for item in results), 4),
@@ -43,18 +141,22 @@ def build_metrics(results: List[Dict]) -> Dict:
             mean(item["judge"]["agreement_rate"] for item in results), 4
         ),
         "avg_latency_ms": round(mean(item["latency_ms"] for item in results), 2),
-        "pass_rate": round(
-            sum(1 for item in results if item["status"] == "pass") / len(results), 4
-        ),
-        "total_tokens": sum(item["metadata"]["tokens_used"] for item in results),
+        "pass_rate": round(pass_count / total, 4),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "error_count": error_count,
+        "total_tokens": sum(item["metadata"].get("tokens_used", 0) for item in results),
         "total_cost_usd": round(
-            sum(item["metadata"]["estimated_cost_usd"] for item in results), 6
+            sum(item["metadata"].get("estimated_cost_usd", 0.0) for item in results), 6
         ),
     }
 
 
 def make_release_gate(
-    baseline_metrics: Dict, candidate_metrics: Dict, total_cases: int
+    baseline_metrics: Dict,
+    candidate_metrics: Dict,
+    total_cases: int,
+    runtime_config: RuntimeConfig,
 ) -> Dict:
     score_delta = round(
         candidate_metrics["avg_score"] - baseline_metrics["avg_score"], 4
@@ -75,12 +177,22 @@ def make_release_gate(
     if candidate_metrics["hit_rate"] < baseline_metrics["hit_rate"]:
         decision = "rollback"
         reasons.append("Retrieval hit rate regressed.")
-    if candidate_metrics["agreement_rate"] < 0.6:
+    if candidate_metrics["pass_rate"] < baseline_metrics["pass_rate"]:
         decision = "rollback"
-        reasons.append("Judge agreement rate is below 0.60.")
-    if total_cases < 50:
+        reasons.append("Overall pass rate regressed.")
+    if candidate_metrics["error_count"] > 0:
         decision = "rollback"
-        reasons.append("Golden dataset has fewer than 50 cases.")
+        reasons.append("Benchmark still has errored cases.")
+    if candidate_metrics["agreement_rate"] < runtime_config.min_agreement_rate:
+        decision = "rollback"
+        reasons.append(
+            f"Judge agreement rate is below {runtime_config.min_agreement_rate:.2f}."
+        )
+    if total_cases < runtime_config.min_cases:
+        decision = "rollback"
+        reasons.append(
+            f"Golden dataset has fewer than {runtime_config.min_cases} cases."
+        )
 
     if decision == "release":
         reasons.append("Candidate passed the starter release gate thresholds.")
@@ -90,61 +202,96 @@ def make_release_gate(
         "score_delta": score_delta,
         "hit_rate_delta": hit_rate_delta,
         "latency_delta_ms": latency_delta_ms,
+        "pass_rate_delta": round(
+            candidate_metrics["pass_rate"] - baseline_metrics["pass_rate"], 4
+        ),
+        "thresholds": {
+            "min_cases": runtime_config.min_cases,
+            "min_agreement_rate": runtime_config.min_agreement_rate,
+        },
         "reasons": reasons,
     }
 
 
-async def run_version(agent_version: str, dataset: List[Dict]) -> Tuple[List[Dict], Dict]:
+def build_result_samples(results: List[Dict]) -> Dict:
+    failed_case_ids = [item["case_id"] for item in results if item["status"] == "fail"]
+    error_case_ids = [item["case_id"] for item in results if item["status"] == "error"]
+    return {
+        "failed_case_ids": failed_case_ids[:10],
+        "error_case_ids": error_case_ids[:10],
+    }
+
+
+def write_json(path: Path, payload: Dict) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+async def run_version(
+    agent_version: str, dataset: List[Dict], runtime_config: RuntimeConfig
+) -> Tuple[List[Dict], Dict]:
     runner = BenchmarkRunner(
         agent=MainAgent(version=agent_version),
         evaluator=RetrievalEvaluator(),
-        judge=LLMJudge(models=["gpt-4o-mini", "claude-3-5-sonnet"]),
+        judge=LLMJudge(models=list(runtime_config.judge_models)),
     )
-    results = await runner.run_all(dataset, concurrency=5)
+    results = await runner.run_all(dataset, concurrency=runtime_config.concurrency)
     return results, build_metrics(results)
 
 
 async def main() -> None:
+    runtime_config = load_runtime_config()
     dataset = load_dataset()
 
-    baseline_results, baseline_metrics = await run_version("Agent_V1_Base", dataset)
+    baseline_results, baseline_metrics = await run_version(
+        runtime_config.baseline_version,
+        dataset,
+        runtime_config,
+    )
     candidate_results, candidate_metrics = await run_version(
-        "Agent_V2_Candidate", dataset
+        runtime_config.candidate_version,
+        dataset,
+        runtime_config,
     )
 
     release_gate = make_release_gate(
         baseline_metrics=baseline_metrics,
         candidate_metrics=candidate_metrics,
         total_cases=len(dataset),
+        runtime_config=runtime_config,
     )
 
     summary = {
         "metadata": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "total": len(dataset),
-            "baseline_version": "Agent_V1_Base",
-            "candidate_version": "Agent_V2_Candidate",
+            "baseline_version": runtime_config.baseline_version,
+            "candidate_version": runtime_config.candidate_version,
+            "report_schema_version": runtime_config.report_schema_version,
         },
+        "config": asdict(runtime_config),
         "metrics": candidate_metrics,
         "baseline": baseline_metrics,
         "candidate": candidate_metrics,
         "regression": release_gate,
+        "samples": {
+            "baseline": build_result_samples(baseline_results),
+            "candidate": build_result_samples(candidate_results),
+        },
     }
 
     detailed_results = {
+        "metadata": summary["metadata"],
+        "config": summary["config"],
         "baseline_results": baseline_results,
         "candidate_results": candidate_results,
     }
 
     REPORTS_DIR.mkdir(exist_ok=True)
-    (REPORTS_DIR / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    (REPORTS_DIR / "benchmark_results.json").write_text(
-        json.dumps(detailed_results, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    write_json(REPORTS_DIR / "summary.json", summary)
+    write_json(REPORTS_DIR / "benchmark_results.json", detailed_results)
 
     print("Benchmark complete.")
     print(f"Baseline avg_score:  {baseline_metrics['avg_score']:.2f}")
