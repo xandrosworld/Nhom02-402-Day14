@@ -52,7 +52,7 @@ class BenchmarkRunner:
         }
 
     async def run_single_test(self, test_case: Dict) -> Dict:
-        print(f"→ START: {test_case['question'][:50]}")
+        print(f"START: {test_case['question'][:50]}")
         start_time = time.perf_counter()
         response = {
             "answer": "",
@@ -80,7 +80,7 @@ class BenchmarkRunner:
         retrieval = self._normalize_retrieval(test_case, response, retrieval_raw)
         judge = self._normalize_judge(test_case["question"], judge_raw)
         metadata = self._normalize_metadata(response)
-        print(f"✓ DONE: {test_case['question'][:30]} | score={judge_raw.get('final_score')}")
+        print(f"DONE: {test_case['question'][:30]} | score={judge_raw.get('final_score')}")
         return {
             "case_id": test_case.get("id"),
             "question": test_case["question"],
@@ -97,28 +97,24 @@ class BenchmarkRunner:
 
     async def run_all(self, dataset: List[Dict], concurrency: int = 10) -> List[Dict]:
         results = []
-
-        # chia batch
         batch_size = concurrency
-        batches = [dataset[i:i + batch_size] for i in range(0, len(dataset), batch_size)]
+        batches = [dataset[i : i + batch_size] for i in range(0, len(dataset), batch_size)]
 
-        print(f"Total cases: {len(dataset)} | Batch size: {batch_size} | Batches: {len(batches)}")
+        print(
+            f"Total cases: {len(dataset)} | Batch size: {batch_size} | Batches: {len(batches)}"
+        )
 
-        for b_idx, batch in enumerate(batches):
-            print(f"\n🚀 Running batch {b_idx+1}/{len(batches)}")
+        for batch_index, batch in enumerate(batches, start=1):
+            print(f"\nRunning batch {batch_index}/{len(batches)}")
 
-            tasks = []
-            for case in batch:
-                tasks.append(self.run_single_test(case))
-
+            tasks = [self.run_single_test(case) for case in batch]
             batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # xử lý lỗi
-            for r in batch_results:
-                if isinstance(r, Exception):
-                    print(f"[ERROR] {r}")
+            for result in batch_results:
+                if isinstance(result, Exception):
+                    print(f"[ERROR] {result}")
                 else:
-                    print(f"✓ {r['case_id']} | score={r['judge']['final_score']}")
-                    results.append(r)
+                    print(f"OK {result['case_id']} | score={result['judge']['final_score']}")
+                    results.append(result)
 
         return results
