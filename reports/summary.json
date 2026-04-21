@@ -2,30 +2,30 @@
   "metadata": {
     "total": 56,
     "version": "OPTIMIZED (V2)",
-    "timestamp": "2026-04-21 17:57:59",
+    "timestamp": "2026-04-21 22:35:00",
     "versions_compared": [
       "V1",
       "V2"
     ]
   },
   "metrics": {
-    "avg_score": 4.8259,
+    "avg_score": 4.8482,
     "hit_rate": 0.9107,
     "mrr": 0.9107,
-    "agreement_rate": 0.9554,
-    "pass_rate": 0.9821
+    "agreement_rate": 0.9911,
+    "pass_rate": 0.9643
   },
   "regression": {
     "v1": {
-      "score": 4.9018,
+      "score": 4.7857,
       "hit_rate": 0.9107,
-      "judge_agreement": 0.9732
+      "judge_agreement": 0.942
     },
     "v2": {
-      "score": 4.8259,
+      "score": 4.8482,
       "hit_rate": 0.9107,
-      "judge_agreement": 0.9554
+      "judge_agreement": 0.9911
     },
-    "decision": "ROLLBACK"
+    "decision": "RELEASE"
   }
 }

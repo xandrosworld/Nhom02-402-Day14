@@ -14,15 +14,15 @@ Tuy vậy, hệ thống vẫn còn `2/56` trường hợp trả lời chưa đú
 
 ## 2. So sánh giữa V1 và V2
 
-| Chỉ số | V1 | V2 | Nhận xét |
-| --- | ---: | ---: | --- |
-| Điểm đánh giá trung bình | 4.7857 | 4.8482 | V2 tốt hơn |
-| Tỷ lệ truy xuất đúng | 0.9107 | 0.9107 | Giữ nguyên |
-| Mức độ đồng thuận khi chấm | 0.9420 | 0.9911 | V2 ổn định hơn |
-| Số câu đạt | 53/56 | 54/56 | V2 giảm số lỗi |
-| Tỷ lệ đạt | 0.9464 | 0.9643 | V2 tốt hơn |
-| Thời gian phản hồi trung bình | 22.9370 giây | 14.1261 giây | V2 nhanh hơn |
-| Số trường hợp chấm còn bất đồng rõ rệt | 4 | 1 | V2 giảm mạnh |
+| Chỉ số                                 |           V1 |           V2 | Nhận xét       |
+| -------------------------------------- | -----------: | -----------: | -------------- |
+| Điểm đánh giá trung bình               |       4.7857 |       4.8482 | V2 tốt hơn     |
+| Tỷ lệ truy xuất đúng                   |       0.9107 |       0.9107 | Giữ nguyên     |
+| Mức độ đồng thuận khi chấm             |       0.9420 |       0.9911 | V2 ổn định hơn |
+| Số câu đạt                             |        53/56 |        54/56 | V2 giảm số lỗi |
+| Tỷ lệ đạt                              |       0.9464 |       0.9643 | V2 tốt hơn     |
+| Thời gian phản hồi trung bình          | 22.9370 giây | 14.1261 giây | V2 nhanh hơn   |
+| Số trường hợp chấm còn bất đồng rõ rệt |            4 |            1 | V2 giảm mạnh   |
 
 Từ bảng trên có thể thấy:
 
