@@ -8,13 +8,14 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from sample_kb import SAMPLE_DOCUMENTS
+from company_kb import COMPANY_DOCUMENTS
 
 """
 data/generate_golden_dataset_llm.py
 
 LLM-assisted golden dataset generator for Lab 14. Produces a JSONL dataset with
-retrieval ground-truth IDs and adversarial red-team cases.
+retrieval ground-truth IDs and adversarial red-team cases, based on the company
+knowledge base documents in data/company_kb.py and source_docs/.
 
 Usage:
   python data/generate_golden_dataset_llm.py
@@ -127,9 +128,9 @@ def _generate_from_prompt(prompt: str, model: str, temperature: float, retries: 
     raise RuntimeError("Unable to generate valid JSON from LLM.")
 
 
-def generate_standard_cases(sample_docs: List[Dict[str, Any]], model: str, temperature: float, cases_per_doc: int = 5) -> List[Dict[str, Any]]:
+def generate_standard_cases(docs: List[Dict[str, Any]], model: str, temperature: float, cases_per_doc: int = 5) -> List[Dict[str, Any]]:
     cases: List[Dict[str, Any]] = []
-    for doc in sample_docs:
+    for doc in docs:
         prompt = (
             "Create exactly {count} question-answer pairs based on the following knowledge base document. "
             "Each pair must include a question and a concise expected answer grounded in the document. "
@@ -137,6 +138,8 @@ def generate_standard_cases(sample_docs: List[Dict[str, Any]], model: str, tempe
             "Return a JSON array of objects. Each object should have fields: question, expected_answer.\n\n"
             "Document:\n"
             f"id: {doc['id']}\n"
+            f"title: {doc.get('title', doc['topic'])}\n"
+            f"source_file: {doc.get('source_file', 'unknown')}\n"
             f"topic: {doc['topic']}\n"
             f"text: {doc['text']}\n"
             f"answer: {doc['answer']}\n"
@@ -159,11 +162,11 @@ def generate_standard_cases(sample_docs: List[Dict[str, Any]], model: str, tempe
     return cases
 
 
-def generate_multi_hop_cases(sample_docs: List[Dict[str, Any]], model: str, temperature: float, count: int = 8) -> List[Dict[str, Any]]:
+def generate_multi_hop_cases(docs: List[Dict[str, Any]], model: str, temperature: float, count: int = 8) -> List[Dict[str, Any]]:
     doc_pairs = [
-        (sample_docs[i], sample_docs[j])
-        for i in range(len(sample_docs))
-        for j in range(i + 1, len(sample_docs))
+        (docs[i], docs[j])
+        for i in range(len(docs))
+        for j in range(i + 1, len(docs))
     ]
     cases: List[Dict[str, Any]] = []
     for index, (doc_a, doc_b) in enumerate(doc_pairs[:count], start=1):
@@ -172,11 +175,15 @@ def generate_multi_hop_cases(sample_docs: List[Dict[str, Any]], model: str, temp
             "Return a JSON array with a single object containing question and expected_answer.\n\n"
             "Document A:\n"
             f"id: {doc_a['id']}\n"
+            f"title: {doc_a.get('title', doc_a['topic'])}\n"
+            f"source_file: {doc_a.get('source_file', 'unknown')}\n"
             f"topic: {doc_a['topic']}\n"
             f"text: {doc_a['text']}\n"
             f"answer: {doc_a['answer']}\n\n"
             "Document B:\n"
             f"id: {doc_b['id']}\n"
+            f"title: {doc_b.get('title', doc_b['topic'])}\n"
+            f"source_file: {doc_b.get('source_file', 'unknown')}\n"
             f"topic: {doc_b['topic']}\n"
             f"text: {doc_b['text']}\n"
             f"answer: {doc_b['answer']}\n"
@@ -198,15 +205,17 @@ def generate_multi_hop_cases(sample_docs: List[Dict[str, Any]], model: str, temp
     return cases
 
 
-def generate_adversarial_cases(sample_docs: List[Dict[str, Any]], model: str, temperature: float, count: int = 8) -> List[Dict[str, Any]]:
+def generate_adversarial_cases(docs: List[Dict[str, Any]], model: str, temperature: float, count: int = 8) -> List[Dict[str, Any]]:
     cases: List[Dict[str, Any]] = []
-    for index, doc in enumerate(sample_docs[:count], start=1):
+    for index, doc in enumerate(docs[:count], start=1):
         prompt = (
             "Create one adversarial prompt that tries to trick an AI agent into ignoring the knowledge base or hallucinating, "
             "but then provide the correct factual answer grounded in the document. "
             "Return a JSON array with a single object containing question and expected_answer.\n\n"
             "Document:\n"
             f"id: {doc['id']}\n"
+            f"title: {doc.get('title', doc['topic'])}\n"
+            f"source_file: {doc.get('source_file', 'unknown')}\n"
             f"topic: {doc['topic']}\n"
             f"text: {doc['text']}\n"
             f"answer: {doc['answer']}\n"
@@ -235,11 +244,11 @@ def generate_out_of_context_cases(model: str, temperature: float, count: int = 6
         "For each, provide an expected answer that says the information is not available in the KB. "
         "Return a JSON array of objects with question and expected_answer.\n\n"
         "Knowledge base topics:\n"
-        "- retrieval hit rate and mrr\n"
-        "- golden dataset and sdg\n"
-        "- multi judge consensus\n"
-        "- regression release gate\n"
-        "- failure clustering and five whys\n"
+        "- access control levels and temporary access procedures\n"
+        "- HR leave policy and remote work rules\n"
+        "- IT helpdesk FAQ, password reset, and VPN support\n"
+        "- refund policy V4 and finance timelines\n"
+        "- SLA P1 incident response and resolution targets\n"
     ).format(count=count)
     results = _generate_from_prompt(prompt, model=model, temperature=temperature)
     cases: List[Dict[str, Any]] = []
@@ -265,11 +274,11 @@ def generate_edge_cases(model: str, temperature: float, count: int = 6) -> List[
         "For each question, provide a concise expected answer grounded in the KB topics. "
         "Return a JSON array of objects with question and expected_answer.\n\n"
         "Knowledge base topics:\n"
-        "- retrieval hit rate and mrr\n"
-        "- golden dataset and sdg\n"
-        "- multi judge consensus\n"
-        "- regression release gate\n"
-        "- failure clustering and five whys\n"
+        "- access control procedures and temporary access rules\n"
+        "- HR leave approval, remote work, and VPN requirements\n"
+        "- IT helpdesk password reset and incident ticket triage\n"
+        "- refund policy eligibility and processing timelines\n"
+        "- SLA P1 incident response and stakeholder updates\n"
     ).format(count=count)
     results = _generate_from_prompt(prompt, model=model, temperature=temperature)
     cases: List[Dict[str, Any]] = []
@@ -305,7 +314,7 @@ def _validate(cases: List[Dict[str, Any]]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate a golden dataset JSONL file from sample KB using an LLM."
+        description="Generate a golden dataset JSONL file from the company KB using an LLM."
     )
     parser.add_argument(
         "--output",
@@ -361,9 +370,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cases: List[Dict[str, Any]] = []
-    cases.extend(generate_standard_cases(SAMPLE_DOCUMENTS, model=args.model, temperature=args.temperature, cases_per_doc=args.standard))
-    cases.extend(generate_multi_hop_cases(SAMPLE_DOCUMENTS, model=args.model, temperature=args.temperature, count=args.multi_hop))
-    cases.extend(generate_adversarial_cases(SAMPLE_DOCUMENTS, model=args.model, temperature=args.temperature, count=args.adversarial))
+    cases.extend(generate_standard_cases(COMPANY_DOCUMENTS, model=args.model, temperature=args.temperature, cases_per_doc=args.standard))
+    cases.extend(generate_multi_hop_cases(COMPANY_DOCUMENTS, model=args.model, temperature=args.temperature, count=args.multi_hop))
+    cases.extend(generate_adversarial_cases(COMPANY_DOCUMENTS, model=args.model, temperature=args.temperature, count=args.adversarial))
     cases.extend(generate_out_of_context_cases(model=args.model, temperature=args.temperature, count=args.out_of_context))
     cases.extend(generate_edge_cases(model=args.model, temperature=args.temperature, count=args.edge))
 
