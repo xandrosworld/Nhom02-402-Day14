@@ -1,22 +1,22 @@
-# Individual Reflection - Mai Tan Thanh
+# Reflection Cá Nhân - Mai Tan Thanh
 
-## Role
+## Vai trò
 Tech Lead / Eval Integration Owner
 
-## Files Owned
+## Các file phụ trách
 - `main.py`
 - `engine/runner.py`
-- integration and final release gate
+- phần integration và final release gate
 
-## Contribution Summary
-- Prepared the starter benchmark pipeline and team ownership structure.
-- Integrated the main benchmark flow so the repo can generate starter reports immediately.
+## Tóm tắt đóng góp
+- Chuẩn bị starter benchmark pipeline và cấu trúc phân công trong nhóm.
+- Tích hợp luồng benchmark chính để repo có thể tạo report mẫu ngay lập tức.
 
-## Technical Learning
-- Fill in after implementation.
+## Bài học kỹ thuật
+- Điền sau khi implement xong.
 
-## Problems Faced
-- Fill in after implementation.
+## Vấn đề gặp phải
+- Điền sau khi implement xong.
 
-## Next Improvement
-- Fill in after implementation.
+## Hướng cải thiện tiếp theo
+- Điền sau khi implement xong.

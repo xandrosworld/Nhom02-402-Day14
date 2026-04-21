@@ -1,13 +1,13 @@
-# Individual Reflection - <Your Name>
+# Reflection Cá Nhân - <Tên Của Bạn>
 
-## Role
+## Vai trò
 
-## Files Owned
+## Các file phụ trách
 
-## Contribution Summary
+## Tóm tắt đóng góp
 
-## Technical Learning
+## Bài học kỹ thuật
 
-## Problems Faced
+## Vấn đề gặp phải
 
-## Next Improvement
+## Hướng cải thiện tiếp theo

@@ -1,51 +1,51 @@
-# Team Ownership - Day 14
+# Phân Công Nhóm - Day 14
 
-## Team roles
+## Vai trò nhóm
 
-| Member | Role | Main ownership |
+| Thành viên | Vai trò | Phạm vi chính |
 |---|---|---|
-| Mai Tan Thanh | Tech Lead / Eval Integration Owner | `main.py`, `engine/runner.py`, release gate, final merge |
-| Dang Tung Anh | Data Owner | `data/synthetic_gen.py`, golden dataset quality, hard cases |
+| Mai Tan Thanh | Tech Lead / Integration Owner | `main.py`, `engine/runner.py`, release gate, merge cuối |
+| Dang Tung Anh | Data Owner | `data/synthetic_gen.py`, chất lượng golden dataset, hard cases |
 | Ho Nhat Khoa | Retrieval Eval Owner | `engine/retrieval_eval.py`, retrieval metrics, retrieval evidence |
-| Nguyen Duc Hoang Phuc | Multi-Judge Owner | `engine/llm_judge.py`, agreement calibration, benchmark cost/perf |
-| Pham Le Hoang Nam | Analysis & Report Owner | `analysis/failure_analysis.md`, reflections checklist, final report assembly |
+| Nguyen Duc Hoang Phuc | Multi-Judge Owner | `engine/llm_judge.py`, agreement calibration, cost/perf benchmark |
+| Pham Le Hoang Nam | Analysis & Report Owner | `analysis/failure_analysis.md`, checklist reflection, tổng hợp báo cáo cuối |
 
-## Working rules
-1. Mai Tan Thanh prepares the starter repo and does the final merge.
-2. Each member creates one feature branch from `main`.
-3. Do not edit someone else's owned file without telling the owner first.
-4. Commit generated artifacts only in the final run by the integration owner.
-5. Keep interfaces stable: `MainAgent.query()`, `RetrievalEvaluator.score()`, `LLMJudge.evaluate_multi_judge()`.
+## Quy ước làm việc
+1. Mai Tan Thanh chuẩn bị starter repo và giữ merge cuối.
+2. Mỗi thành viên tạo một feature branch từ `main`.
+3. Không sửa file owner của người khác nếu chưa báo trước.
+4. Các artifact sinh ra chỉ commit trong lần final run của integration owner.
+5. Giữ ổn định interface: `MainAgent.query()`, `RetrievalEvaluator.score()`, `LLMJudge.evaluate_multi_judge()`.
 
-## Suggested branches
+## Gợi ý tên branch
 - `mtt/integration-gate`
 - `anh/golden-dataset`
 - `khoa/retrieval-metrics`
 - `phuc/multi-judge`
 - `nam/failure-analysis`
 
-## Expected handoff
+## Bàn giao mong đợi
 
 ### Mai Tan Thanh
-- main benchmark flow runs end-to-end
-- reports are generated in `reports/`
-- release / rollback decision is visible in `summary.json`
+- Luồng benchmark chạy end-to-end
+- Report được tạo trong `reports/`
+- Quyết định release / rollback hiện trong `summary.json`
 
 ### Dang Tung Anh
-- `golden_set.jsonl` can be generated with 50+ cases
-- each case has `expected_retrieval_ids`
-- hard cases are included
+- `golden_set.jsonl` tạo được 50+ cases
+- Mỗi case có `expected_retrieval_ids`
+- Có các hard case
 
 ### Ho Nhat Khoa
-- hit rate and MRR are correct
-- retrieval evidence can explain top-k misses
+- Hit Rate và MRR tính đúng
+- Có evidence giải thích các top-k miss
 
 ### Nguyen Duc Hoang Phuc
-- at least two judges are wired
-- agreement logic is visible in output
-- latency, token, and cost fields are tracked
+- Có ít nhất hai judge được nối vào pipeline
+- Logic agreement hiện rõ trong output
+- Có theo dõi latency, token, và cost
 
 ### Pham Le Hoang Nam
-- `analysis/failure_analysis.md` is completed
-- reflections are collected in `analysis/reflections/`
-- final submission checklist is reviewed
+- `analysis/failure_analysis.md` được điền đầy đủ
+- Các file reflection được gom trong `analysis/reflections/`
+- Checklist nộp bài cuối được review
