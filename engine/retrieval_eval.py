@@ -2,10 +2,18 @@ import asyncio
 import json
 import math
 import os
+import unicodedata
 from typing import Dict, List
 from urllib import request as urllib_request
 
 from openai import OpenAI
+
+
+def _normalize_text(text: str) -> List[str]:
+    ascii_text = unicodedata.normalize("NFKD", text)
+    ascii_text = "".join(ch for ch in ascii_text if not unicodedata.combining(ch))
+    cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in ascii_text)
+    return [token for token in cleaned.split() if token]
 
 
 class RetrievalEvaluator:
@@ -55,8 +63,8 @@ class RetrievalEvaluator:
     ) -> float:
         # Fraction of expected_answer tokens present in retrieved contexts (RAGAS simplified).
         # Full RAGAS uses LLM to extract claims; token overlap is the proxy for mock mode.
-        expected_tokens = set(expected_answer.lower().split())
-        context_tokens = set(t for ctx in contexts for t in ctx.lower().split())
+        expected_tokens = set(_normalize_text(expected_answer))
+        context_tokens = set(t for ctx in contexts for t in _normalize_text(ctx))
         if not expected_tokens:
             return 0.0
         return round(len(expected_tokens & context_tokens) / len(expected_tokens), 4)
@@ -66,8 +74,8 @@ class RetrievalEvaluator:
         # Full RAGAS uses LLM to verify each claim; token overlap approximates grounding.
         # Note: RAG systems naturally reuse context vocabulary, so this score tends to be
         # high by design — it cannot detect hallucination at the claim level.
-        answer_tokens = set(answer.lower().split())
-        context_tokens = set(t for ctx in contexts for t in ctx.lower().split())
+        answer_tokens = set(_normalize_text(answer))
+        context_tokens = set(t for ctx in contexts for t in _normalize_text(ctx))
         if not answer_tokens:
             return 0.0
         return round(len(answer_tokens & context_tokens) / len(answer_tokens), 4)
