@@ -62,3 +62,10 @@ None
 - Dieu chinh generation prompt cho cac case co score thap.
 - Xem xet tie-break logic khi judge disagreement cao.
 - Tiep tuc monitoring sau khi release quyet dinh ROLLBACK.
+
+## 5. Giai thich vi sao V2 khong bang V1
+
+- Retrieval khong giam nhung chat luong tra loi giam: Hit Rate giu nguyen 0.9107, trong khi Judge Score giam tu 4.9018 xuong 4.8259 va Judge Agreement giam tu 0.9732 xuong 0.9554.
+- Dau hieu regression nam o generation/consistency: mot so cau tra loi bi tron noi dung khong lien quan vao dap an chinh, khien diem judge giam manh du retrieval van trung tai lieu.
+- Regression kieu "soft" nhung co y nghia van hanh: Pass rate van cao, nhung do tin cay giam do disagreement tang va chat luong khong on dinh o mot nhom case.
+- Quyet dinh ROLLBACK la hop ly: khi score va agreement cung giam, rui ro release tang; rollback giup bao toan chat luong truoc khi tiep tuc toi uu V2.
