@@ -1,86 +1,156 @@
 import asyncio
 import json
-import os
-import time
-from engine.runner import BenchmarkRunner
+from datetime import datetime, timezone
+from pathlib import Path
+from statistics import mean
+from typing import Dict, List, Tuple
+
 from agent.main_agent import MainAgent
+from engine.llm_judge import LLMJudge
+from engine.runner import BenchmarkRunner
+from engine.retrieval_eval import RetrievalEvaluator
 
-# Giả lập các components Expert
-class ExpertEvaluator:
-    async def score(self, case, resp): 
-        # Giả lập tính toán Hit Rate và MRR
-        return {
-            "faithfulness": 0.9, 
-            "relevancy": 0.8,
-            "retrieval": {"hit_rate": 1.0, "mrr": 0.5}
-        }
+ROOT = Path(__file__).resolve().parent
+DATASET_PATH = ROOT / "data" / "golden_set.jsonl"
+REPORTS_DIR = ROOT / "reports"
 
-class MultiModelJudge:
-    async def evaluate_multi_judge(self, q, a, gt): 
-        return {
-            "final_score": 4.5, 
-            "agreement_rate": 0.8,
-            "reasoning": "Cả 2 model đồng ý đây là câu trả lời tốt."
-        }
 
-async def run_benchmark_with_results(agent_version: str):
-    print(f"🚀 Khởi động Benchmark cho {agent_version}...")
+def load_dataset() -> List[Dict]:
+    if not DATASET_PATH.exists():
+        raise FileNotFoundError(
+            "Missing data/golden_set.jsonl. Run `python data/synthetic_gen.py` first."
+        )
 
-    if not os.path.exists("data/golden_set.jsonl"):
-        print("❌ Thiếu data/golden_set.jsonl. Hãy chạy 'python data/synthetic_gen.py' trước.")
-        return None, None
-
-    with open("data/golden_set.jsonl", "r", encoding="utf-8") as f:
-        dataset = [json.loads(line) for line in f if line.strip()]
+    dataset: List[Dict] = []
+    with DATASET_PATH.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                dataset.append(json.loads(line))
 
     if not dataset:
-        print("❌ File data/golden_set.jsonl rỗng. Hãy tạo ít nhất 1 test case.")
-        return None, None
+        raise ValueError("data/golden_set.jsonl is empty.")
 
-    runner = BenchmarkRunner(MainAgent(), ExpertEvaluator(), MultiModelJudge())
-    results = await runner.run_all(dataset)
+    return dataset
 
-    total = len(results)
-    summary = {
-        "metadata": {"version": agent_version, "total": total, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")},
-        "metrics": {
-            "avg_score": sum(r["judge"]["final_score"] for r in results) / total,
-            "hit_rate": sum(r["ragas"]["retrieval"]["hit_rate"] for r in results) / total,
-            "agreement_rate": sum(r["judge"]["agreement_rate"] for r in results) / total
-        }
+
+def build_metrics(results: List[Dict]) -> Dict:
+    return {
+        "avg_score": round(mean(item["judge"]["final_score"] for item in results), 4),
+        "hit_rate": round(mean(item["retrieval"]["hit_rate"] for item in results), 4),
+        "mrr": round(mean(item["retrieval"]["mrr"] for item in results), 4),
+        "agreement_rate": round(
+            mean(item["judge"]["agreement_rate"] for item in results), 4
+        ),
+        "avg_latency_ms": round(mean(item["latency_ms"] for item in results), 2),
+        "pass_rate": round(
+            sum(1 for item in results if item["status"] == "pass") / len(results), 4
+        ),
+        "total_tokens": sum(item["metadata"]["tokens_used"] for item in results),
+        "total_cost_usd": round(
+            sum(item["metadata"]["estimated_cost_usd"] for item in results), 6
+        ),
     }
-    return results, summary
 
-async def run_benchmark(version):
-    _, summary = await run_benchmark_with_results(version)
-    return summary
 
-async def main():
-    v1_summary = await run_benchmark("Agent_V1_Base")
-    
-    # Giả lập V2 có cải tiến (để test logic)
-    v2_results, v2_summary = await run_benchmark_with_results("Agent_V2_Optimized")
-    
-    if not v1_summary or not v2_summary:
-        print("❌ Không thể chạy Benchmark. Kiểm tra lại data/golden_set.jsonl.")
-        return
+def make_release_gate(
+    baseline_metrics: Dict, candidate_metrics: Dict, total_cases: int
+) -> Dict:
+    score_delta = round(
+        candidate_metrics["avg_score"] - baseline_metrics["avg_score"], 4
+    )
+    hit_rate_delta = round(
+        candidate_metrics["hit_rate"] - baseline_metrics["hit_rate"], 4
+    )
+    latency_delta_ms = round(
+        candidate_metrics["avg_latency_ms"] - baseline_metrics["avg_latency_ms"], 2
+    )
 
-    print("\n📊 --- KẾT QUẢ SO SÁNH (REGRESSION) ---")
-    delta = v2_summary["metrics"]["avg_score"] - v1_summary["metrics"]["avg_score"]
-    print(f"V1 Score: {v1_summary['metrics']['avg_score']}")
-    print(f"V2 Score: {v2_summary['metrics']['avg_score']}")
-    print(f"Delta: {'+' if delta >= 0 else ''}{delta:.2f}")
+    decision = "release"
+    reasons: List[str] = []
 
-    os.makedirs("reports", exist_ok=True)
-    with open("reports/summary.json", "w", encoding="utf-8") as f:
-        json.dump(v2_summary, f, ensure_ascii=False, indent=2)
-    with open("reports/benchmark_results.json", "w", encoding="utf-8") as f:
-        json.dump(v2_results, f, ensure_ascii=False, indent=2)
+    if candidate_metrics["avg_score"] < baseline_metrics["avg_score"]:
+        decision = "rollback"
+        reasons.append("Average judge score regressed.")
+    if candidate_metrics["hit_rate"] < baseline_metrics["hit_rate"]:
+        decision = "rollback"
+        reasons.append("Retrieval hit rate regressed.")
+    if candidate_metrics["agreement_rate"] < 0.6:
+        decision = "rollback"
+        reasons.append("Judge agreement rate is below 0.60.")
+    if total_cases < 50:
+        decision = "rollback"
+        reasons.append("Golden dataset has fewer than 50 cases.")
 
-    if delta > 0:
-        print("✅ QUYẾT ĐỊNH: CHẤP NHẬN BẢN CẬP NHẬT (APPROVE)")
-    else:
-        print("❌ QUYẾT ĐỊNH: TỪ CHỐI (BLOCK RELEASE)")
+    if decision == "release":
+        reasons.append("Candidate passed the starter release gate thresholds.")
+
+    return {
+        "decision": decision,
+        "score_delta": score_delta,
+        "hit_rate_delta": hit_rate_delta,
+        "latency_delta_ms": latency_delta_ms,
+        "reasons": reasons,
+    }
+
+
+async def run_version(agent_version: str, dataset: List[Dict]) -> Tuple[List[Dict], Dict]:
+    runner = BenchmarkRunner(
+        agent=MainAgent(version=agent_version),
+        evaluator=RetrievalEvaluator(),
+        judge=LLMJudge(models=["gpt-4o-mini", "claude-3-5-sonnet"]),
+    )
+    results = await runner.run_all(dataset, concurrency=5)
+    return results, build_metrics(results)
+
+
+async def main() -> None:
+    dataset = load_dataset()
+
+    baseline_results, baseline_metrics = await run_version("Agent_V1_Base", dataset)
+    candidate_results, candidate_metrics = await run_version(
+        "Agent_V2_Candidate", dataset
+    )
+
+    release_gate = make_release_gate(
+        baseline_metrics=baseline_metrics,
+        candidate_metrics=candidate_metrics,
+        total_cases=len(dataset),
+    )
+
+    summary = {
+        "metadata": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "total": len(dataset),
+            "baseline_version": "Agent_V1_Base",
+            "candidate_version": "Agent_V2_Candidate",
+        },
+        "metrics": candidate_metrics,
+        "baseline": baseline_metrics,
+        "candidate": candidate_metrics,
+        "regression": release_gate,
+    }
+
+    detailed_results = {
+        "baseline_results": baseline_results,
+        "candidate_results": candidate_results,
+    }
+
+    REPORTS_DIR.mkdir(exist_ok=True)
+    (REPORTS_DIR / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (REPORTS_DIR / "benchmark_results.json").write_text(
+        json.dumps(detailed_results, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    print("Benchmark complete.")
+    print(f"Baseline avg_score:  {baseline_metrics['avg_score']:.2f}")
+    print(f"Candidate avg_score: {candidate_metrics['avg_score']:.2f}")
+    print(f"Release gate:        {release_gate['decision'].upper()}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

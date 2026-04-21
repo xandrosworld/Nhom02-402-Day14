@@ -1,63 +1,49 @@
 import json
-import os
+from pathlib import Path
 
-def validate_lab():
-    print("🔍 Đang kiểm tra định dạng bài nộp...")
+ROOT = Path(__file__).resolve().parent
+
+
+def validate_lab() -> None:
+    print("Checking Day 14 submission starter...")
 
     required_files = [
-        "reports/summary.json",
-        "reports/benchmark_results.json",
-        "analysis/failure_analysis.md"
+        ROOT / "reports" / "summary.json",
+        ROOT / "reports" / "benchmark_results.json",
+        ROOT / "analysis" / "failure_analysis.md",
     ]
 
-    # 1. Kiểm tra sự tồn tại của tất cả file
-    missing = []
-    for f in required_files:
-        if os.path.exists(f):
-            print(f"✅ Tìm thấy: {f}")
-        else:
-            print(f"❌ Thiếu file: {f}")
-            missing.append(f)
+    missing = [path for path in required_files if not path.exists()]
+    for path in required_files:
+        print(f"[{'OK' if path.exists() else 'MISSING'}] {path.relative_to(ROOT)}")
 
     if missing:
-        print(f"\n❌ Thiếu {len(missing)} file. Hãy bổ sung trước khi nộp bài.")
-        return
+        raise SystemExit(
+            f"Missing {len(missing)} required file(s). Generate reports before submission."
+        )
 
-    # 2. Kiểm tra nội dung summary.json
-    try:
-        with open("reports/summary.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"❌ File reports/summary.json không phải JSON hợp lệ: {e}")
-        return
+    summary = json.loads((ROOT / "reports" / "summary.json").read_text(encoding="utf-8"))
 
-    if "metrics" not in data or "metadata" not in data:
-        print("❌ File summary.json thiếu trường 'metrics' hoặc 'metadata'.")
-        return
+    if "metadata" not in summary or "metrics" not in summary:
+        raise SystemExit("summary.json must contain both `metadata` and `metrics`.")
 
-    metrics = data["metrics"]
+    metrics = summary["metrics"]
+    for field in ["avg_score", "hit_rate", "mrr", "agreement_rate", "pass_rate"]:
+        if field not in metrics:
+            raise SystemExit(f"summary.json is missing metrics.{field}")
 
-    print(f"\n--- Thống kê nhanh ---")
-    print(f"Tổng số cases: {data['metadata'].get('total', 'N/A')}")
-    print(f"Điểm trung bình: {metrics.get('avg_score', 0):.2f}")
+    if "regression" not in summary or "decision" not in summary["regression"]:
+        raise SystemExit("summary.json must contain regression.decision")
 
-    # EXPERT CHECKS
-    has_retrieval = "hit_rate" in metrics
-    if has_retrieval:
-        print(f"✅ Đã tìm thấy Retrieval Metrics (Hit Rate: {metrics['hit_rate']*100:.1f}%)")
-    else:
-        print(f"⚠️ CẢNH BÁO: Thiếu Retrieval Metrics (hit_rate).")
+    print("Summary metrics found:")
+    print(f"  total cases:      {summary['metadata'].get('total')}")
+    print(f"  avg score:        {metrics['avg_score']}")
+    print(f"  hit rate:         {metrics['hit_rate']}")
+    print(f"  mrr:              {metrics['mrr']}")
+    print(f"  agreement rate:   {metrics['agreement_rate']}")
+    print(f"  release decision: {summary['regression']['decision']}")
+    print("Starter validation passed.")
 
-    has_multi_judge = "agreement_rate" in metrics
-    if has_multi_judge:
-        print(f"✅ Đã tìm thấy Multi-Judge Metrics (Agreement Rate: {metrics['agreement_rate']*100:.1f}%)")
-    else:
-        print(f"⚠️ CẢNH BÁO: Thiếu Multi-Judge Metrics (agreement_rate).")
-
-    if data["metadata"].get("version"):
-        print(f"✅ Đã tìm thấy thông tin phiên bản Agent (Regression Mode)")
-
-    print("\n🚀 Bài lab đã sẵn sàng để chấm điểm!")
 
 if __name__ == "__main__":
     validate_lab()

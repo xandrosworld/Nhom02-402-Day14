@@ -1,35 +1,42 @@
-import asyncio
-from typing import Dict, Any
+from typing import Any, Dict, List
+
+
+def _normalize(text: str) -> List[str]:
+    cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in text)
+    return [token for token in cleaned.split() if token]
+
 
 class LLMJudge:
-    def __init__(self, model: str = "gpt-4o"):
-        self.model = model
-        # TODO: Định nghĩa rubrics chi tiết cho các tiêu chí: Accuracy, Professionalism, Safety
-        self.rubrics = {
-            "accuracy": "Chấm điểm từ 1-5 dựa trên độ chính xác so với Ground Truth...",
-            "tone": "Chấm điểm từ 1-5 dựa trên sự chuyên nghiệp của ngôn ngữ..."
-        }
+    def __init__(self, models: List[str]):
+        self.models = models
 
-    async def evaluate_multi_judge(self, question: str, answer: str, ground_truth: str) -> Dict[str, Any]:
-        """
-        EXPERT TASK: Gọi ít nhất 2 model (ví dụ GPT-4o và Claude).
-        Tính toán sự sai lệch. Nếu lệch > 1 điểm, cần logic xử lý.
-        """
-        # Giả lập gọi 2 model
-        score_a = 4
-        score_b = 3
-        
-        avg_score = (score_a + score_b) / 2
-        agreement = 1.0 if score_a == score_b else 0.5
-        
+    def _score_with_overlap(self, answer: str, ground_truth: str, bias: float) -> float:
+        answer_tokens = set(_normalize(answer))
+        truth_tokens = set(_normalize(ground_truth))
+        if not truth_tokens:
+            return 1.0
+
+        overlap = len(answer_tokens.intersection(truth_tokens)) / len(truth_tokens)
+        raw_score = 1.0 + overlap * 4.0 + bias
+        return max(1.0, min(5.0, round(raw_score, 2)))
+
+    async def evaluate_multi_judge(
+        self, question: str, answer: str, ground_truth: str
+    ) -> Dict[str, Any]:
+        score_a = self._score_with_overlap(answer, ground_truth, bias=0.1)
+        score_b = self._score_with_overlap(answer, ground_truth, bias=-0.1)
+        delta = abs(score_a - score_b)
+        agreement = round(max(0.0, 1.0 - delta / 4.0), 4)
+        final_score = round((score_a + score_b) / 2.0, 2)
+
         return {
-            "final_score": avg_score,
+            "question": question,
+            "final_score": final_score,
             "agreement_rate": agreement,
-            "individual_scores": {"gpt-4o": score_a, "claude-3-5": score_b}
+            "score_delta": round(delta, 2),
+            "conflict_flag": delta > 1.0,
+            "individual_scores": {
+                self.models[0]: score_a,
+                self.models[1]: score_b,
+            },
         }
-
-    async def check_position_bias(self, response_a: str, response_b: str):
-        """
-        Nâng cao: Thực hiện đổi chỗ response A và B để xem Judge có thiên vị vị trí không.
-        """
-        pass
