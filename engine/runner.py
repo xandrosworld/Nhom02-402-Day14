@@ -32,6 +32,10 @@ class BenchmarkRunner:
             "retrieved_ids": retrieval.get(
                 "retrieved_ids", response.get("retrieved_ids", [])
             ),
+            "context_precision": retrieval.get("context_precision", 0.0),
+            "context_recall": retrieval.get("context_recall", 0.0),
+            "faithfulness": retrieval.get("faithfulness", 0.0),
+            "answer_relevancy": retrieval.get("answer_relevancy", 0.0),
         }
 
     @staticmethod

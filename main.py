@@ -137,6 +137,18 @@ def build_metrics(results: List[Dict]) -> Dict:
         "avg_score": round(mean(item["judge"]["final_score"] for item in results), 4),
         "hit_rate": round(mean(item["retrieval"]["hit_rate"] for item in results), 4),
         "mrr": round(mean(item["retrieval"]["mrr"] for item in results), 4),
+        "context_precision": round(
+            mean(item["retrieval"].get("context_precision", 0.0) for item in results), 4
+        ),
+        "context_recall": round(
+            mean(item["retrieval"].get("context_recall", 0.0) for item in results), 4
+        ),
+        "faithfulness": round(
+            mean(item["retrieval"].get("faithfulness", 0.0) for item in results), 4
+        ),
+        "answer_relevancy": round(
+            mean(item["retrieval"].get("answer_relevancy", 0.0) for item in results), 4
+        ),
         "agreement_rate": round(
             mean(item["judge"]["agreement_rate"] for item in results), 4
         ),
